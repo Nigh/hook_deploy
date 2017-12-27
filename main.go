@@ -16,6 +16,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+func echo(str string) {
+	fmt.Println("@@@@@ECHO@@@@@: " + str)
+}
+
 var remote, branch, bin string
 
 func main() {
@@ -44,12 +48,14 @@ func main() {
 }
 
 func pull(pipe chan string) {
+	echo("pull")
 	cmd := exec.Command("git", "pull", remote, branch)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(err)
 	}
 	if !strings.Contains(string(out), "up-to-date") { // 如果不是最新
+		echo("update")
 		pipe <- "close"
 		pipe <- "rebuild"
 	}
@@ -74,6 +80,7 @@ func auto_build(pipe chan string) {
 		select {
 		case str := <-pipe:
 			if str == "rebuild" {
+				echo("rebuild")
 				cmd := exec.Command("go", "build", "-v")
 				out, err := cmd.CombinedOutput()
 				if err != nil {
@@ -89,17 +96,20 @@ func auto_build(pipe chan string) {
 func auto_run(pipe chan string) {
 	ctx, exit := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, bin)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	cmd.Stdout = os.Stdout
 	for {
 		select {
 		case <-ctx.Done():
+			echo("done")
 			pipe <- "rebuild"
 		case str := <-pipe:
 			switch str {
 			case "start":
+				echo("start")
 				cmd.Start()
 			case "close":
+				echo("close")
 				exit()
 			}
 		}
