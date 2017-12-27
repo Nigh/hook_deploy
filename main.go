@@ -21,6 +21,7 @@ func echo(str string) {
 }
 
 var remote, branch, bin string
+var pull_pipe, build_pipe, run_pipe chan string
 
 func main() {
 	viper.AddConfigPath(".")
@@ -34,20 +35,22 @@ func main() {
 	branch = viper.Get("branch").(string)
 	bin = viper.Get("exe").(string)
 
-	pipe := make(chan string)
+	pull_pipe = make(chan string)
+	build_pipe = make(chan string)
+	run_pipe = make(chan string)
 
-	go auto_pull(pipe)
-	go auto_build(pipe)
-	go auto_run(pipe)
-	pull(pipe)
-	pipe <- "start"
+	go auto_pull()
+	go auto_build()
+	go auto_run()
+	pull_pipe <- "pull"
+	run_pipe <- "start"
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
 }
 
-func pull(pipe chan string) {
+func pull() {
 	echo("pull")
 	cmd := exec.Command("git", "pull", remote, branch)
 	out, err := cmd.CombinedOutput()
@@ -57,44 +60,46 @@ func pull(pipe chan string) {
 	// if !strings.Contains(string(out), "up-to-date") { // 如果不是最新
 	if strings.Contains(string(out), "changed") { // 如果不是最新
 		echo("update")
-		pipe <- "close"
-		pipe <- "rebuild"
+		build_pipe <- "rebuild"
+	} else {
+		echo("no update")
 	}
 }
 
-func auto_pull(pipe chan string) {
+func auto_pull() {
 	timer := time.NewTicker(30 * time.Minute)
 	for {
 		select {
 		case <-timer.C:
-			pull(pipe)
-		case str := <-pipe:
+			pull()
+		case str := <-pull_pipe:
 			if str == "pull" {
-				pull(pipe)
+				pull()
 			}
 		}
 	}
 }
 
-func auto_build(pipe chan string) {
+func auto_build() {
 	for {
 		select {
-		case str := <-pipe:
+		case str := <-build_pipe:
 			if str == "rebuild" {
 				echo("rebuild")
+				run_pipe <- "close"
 				cmd := exec.Command("go", "build", "-v")
 				out, err := cmd.CombinedOutput()
 				if err != nil {
 					fmt.Println(err)
 				}
 				fmt.Println(string(out))
-				pipe <- "start"
+				run_pipe <- "start"
 			}
 		}
 	}
 }
 
-func auto_run(pipe chan string) {
+func auto_run() {
 	ctx, exit := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, bin)
 	// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -103,8 +108,8 @@ func auto_run(pipe chan string) {
 		select {
 		case <-ctx.Done():
 			echo("done")
-			pipe <- "rebuild"
-		case str := <-pipe:
+			build_pipe <- "rebuild"
+		case str := <-run_pipe:
 			switch str {
 			case "start":
 				echo("start")
