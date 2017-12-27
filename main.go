@@ -54,7 +54,8 @@ func pull(pipe chan string) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	if !strings.Contains(string(out), "up-to-date") { // 如果不是最新
+	// if !strings.Contains(string(out), "up-to-date") { // 如果不是最新
+	if strings.Contains(string(out), "changed") { // 如果不是最新
 		echo("update")
 		pipe <- "close"
 		pipe <- "rebuild"
