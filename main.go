@@ -87,7 +87,17 @@ func auto_build() {
 			if str == "rebuild" {
 				echo("rebuild")
 				run_pipe <- "close"
-				cmd := exec.Command("go", "build", "-v")
+				cmd := exec.Command("go", "build")
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					fmt.Println(err)
+				}
+				fmt.Println(string(out))
+				run_pipe <- "start"
+			}
+			if str == "build" {
+				echo("build")
+				cmd := exec.Command("go", "build")
 				out, err := cmd.CombinedOutput()
 				if err != nil {
 					fmt.Println(err)
@@ -100,23 +110,35 @@ func auto_build() {
 }
 
 func auto_run() {
-	ctx, exit := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, bin)
+
 	// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	cmd.Stdout = os.Stdout
+	var ctx context.Context
+	var cancel context.CancelFunc
+	var cmd *exec.Cmd
+
+	var ctxValid bool = false
 	for {
 		select {
 		case <-ctx.Done():
 			echo("done")
-			build_pipe <- "rebuild"
+			ctxValid = false
+			build_pipe <- "build"
 		case str := <-run_pipe:
 			switch str {
 			case "start":
 				echo("start")
-				cmd.Start()
+				if !ctxValid {
+					ctx, cancel = context.WithCancel(context.Background())
+					ctxValid = true
+					cmd = exec.CommandContext(ctx, bin)
+					cmd.Stdout = os.Stdout
+					cmd.Start()
+				} else { // restart
+					run_pipe <- "close"
+				}
 			case "close":
 				echo("close")
-				exit()
+				cancel()
 			}
 		}
 	}
