@@ -116,7 +116,11 @@ func auto_run() {
 	var cancel context.CancelFunc
 	var cmd *exec.Cmd
 
-	var ctxValid bool = false
+	var ctxValid bool = true
+	ctx, cancel = context.WithCancel(context.Background())
+	cmd = exec.CommandContext(ctx, bin)
+	cmd.Stdout = os.Stdout
+	cmd.Start()
 	for {
 		select {
 		case <-ctx.Done():
