@@ -35,15 +35,15 @@ func main() {
 	branch = viper.Get("branch").(string)
 	bin = viper.Get("exe").(string)
 
-	pull_pipe = make(chan string)
-	build_pipe = make(chan string)
-	run_pipe = make(chan string)
+	pull_pipe = make(chan string, 7)
+	build_pipe = make(chan string, 7)
+	run_pipe = make(chan string, 7)
 
 	go auto_pull()
 	go auto_build()
 	go auto_run()
 	pull_pipe <- "pull"
-	run_pipe <- "start"
+	build_pipe <- "build"
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
@@ -67,7 +67,7 @@ func pull() {
 }
 
 func auto_pull() {
-	timer := time.NewTicker(30 * time.Minute)
+	timer := time.NewTicker(15 * time.Minute)
 	for {
 		select {
 		case <-timer.C:
@@ -87,13 +87,6 @@ func auto_build() {
 			if str == "rebuild" {
 				echo("rebuild")
 				run_pipe <- "close"
-				cmd := exec.Command("go", "build")
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					fmt.Println(err)
-				}
-				fmt.Println(string(out))
-				run_pipe <- "start"
 			}
 			if str == "build" {
 				echo("build")
@@ -116,33 +109,31 @@ func auto_run() {
 	var cancel context.CancelFunc
 	var cmd *exec.Cmd
 
-	var ctxValid bool = true
+	var ctxRun bool = false
 	ctx, cancel = context.WithCancel(context.Background())
-	cmd = exec.CommandContext(ctx, bin)
-	cmd.Stdout = os.Stdout
-	cmd.Start()
 	for {
 		select {
 		case <-ctx.Done():
 			echo("done")
-			ctxValid = false
+			ctx, cancel = context.WithCancel(context.Background())
 			build_pipe <- "build"
 		case str := <-run_pipe:
-			switch str {
-			case "start":
+			if str == "start" {
 				echo("start")
-				if !ctxValid {
-					ctx, cancel = context.WithCancel(context.Background())
-					ctxValid = true
+				if !ctxRun {
 					cmd = exec.CommandContext(ctx, bin)
 					cmd.Stdout = os.Stdout
-					cmd.Start()
-				} else { // restart
+					go cmd.Start()
+					ctxRun = true
+				} else {
+					echo("restart")
 					run_pipe <- "close"
 				}
-			case "close":
+			}
+			if str == "close" {
 				echo("close")
 				cancel()
+				ctxRun = false
 			}
 		}
 	}
