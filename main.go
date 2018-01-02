@@ -31,6 +31,9 @@ func main() {
 	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
+	viper.SetDefault("remote", "origin")
+	viper.SetDefault("branch", "master")
+
 	remote = viper.Get("remote").(string)
 	branch = viper.Get("branch").(string)
 	bin = viper.Get("exe").(string)
