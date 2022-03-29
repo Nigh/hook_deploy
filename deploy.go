@@ -10,12 +10,15 @@ import (
 )
 
 func runCommandAt(cmd string, dir string) error {
-	r := regexp.MustCompile(`(.+?)\s+(.*)`)
-	matchs := r.FindStringSubmatch(cmd)
+	// r := regexp.MustCompile(`(.+?)\s+(.*)`)
+	// matchs := r.FindStringSubmatch(cmd)
+	r := regexp.MustCompile(`(\S+)`)
+	matchs := r.FindAllString(cmd, -1)
 	var err error = nil
 	fmt.Println("try to run cmd:", "["+cmd+"]", "at ["+dir+"]")
+	fmt.Println(matchs)
 	if len(matchs) > 0 {
-		cmdobj := exec.Command(matchs[1], matchs[2])
+		cmdobj := exec.Command(matchs[0], matchs[1:]...)
 		cmdobj.Stdout = os.Stdout
 		cmdobj.Stderr = os.Stderr
 		cmdobj.Dir = dir
