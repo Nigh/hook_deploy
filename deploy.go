@@ -10,13 +10,10 @@ import (
 )
 
 func runCommandAt(cmd string, dir string) error {
-	// r := regexp.MustCompile(`(.+?)\s+(.*)`)
-	// matchs := r.FindStringSubmatch(cmd)
 	r := regexp.MustCompile(`(\S+)`)
 	matchs := r.FindAllString(cmd, -1)
 	var err error = nil
-	fmt.Println("try to run cmd:", "["+cmd+"]", "at ["+dir+"]")
-	fmt.Println(matchs)
+	fmt.Println("try to run cmd:", matchs, "at ["+dir+"]")
 	if len(matchs) > 0 {
 		cmdobj := exec.Command(matchs[0], matchs[1:]...)
 		cmdobj.Stdout = os.Stdout
@@ -28,13 +25,16 @@ func runCommandAt(cmd string, dir string) error {
 	}
 	if err != nil {
 		return err
+	} else {
+		fmt.Println("cmd run Finished")
+
 	}
 	return nil
 }
 
 func giteeHandler(j webhookGiteeJSON) {
 	for _, v := range config.Apps {
-		if j.Repo.Path == v.GitName {
+		if v.Type == "gitee" && j.Repo.Path == v.GitName {
 			absProjectPath, _ := filepath.Abs(v.ProjectDIR)
 			// git reset
 			err := runCommandAt("git reset --hard", absProjectPath)
