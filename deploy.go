@@ -33,7 +33,9 @@ func runCommandAt(cmd string, dir string) error {
 }
 
 func giteeHandler(j webhookGiteeJSON) {
+	fmt.Println("Repo.Path = " + j.Repo.Path)
 	for _, v := range config.Apps {
+		fmt.Println("v.GitName = " + v.GitName)
 		if v.Type == "gitee" && j.Repo.Path == v.GitName {
 			absProjectPath, _ := filepath.Abs(v.ProjectDIR)
 			// git reset

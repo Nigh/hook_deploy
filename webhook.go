@@ -29,6 +29,7 @@ type webhookGiteeJSON struct {
 	Password string      `json:"password,omitempty"`
 }
 
+// TODO: add gitee password
 type appsJSON struct {
 	Type       string `json:"type"`
 	GitName    string `json:"git_name"`
