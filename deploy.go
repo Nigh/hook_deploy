@@ -43,13 +43,13 @@ func giteeHandler(j webhookGiteeJSON) {
 			if err != nil {
 				return
 			}
-			// git checkout
-			err = runCommandAt("git checkout "+v.Branch, absProjectPath)
+			// pull
+			err = runCommandAt("git fetch origin "+v.Branch, absProjectPath)
 			if err != nil {
 				return
 			}
-			// pull
-			err = runCommandAt("git pull origin "+v.Branch+" -f", absProjectPath)
+			// reset
+			err = runCommandAt("git reset --hard origin/"+v.Branch, absProjectPath)
 			if err != nil {
 				return
 			}
