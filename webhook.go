@@ -3,17 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 )
-
-func llg(a ...any) {
-	fmt.Println("HookDeploy Log:", a)
-}
 
 type giteeRepo struct {
 	Name string `json:"name"`
@@ -53,7 +49,7 @@ func getConfig(path string) error {
 		return err
 	}
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	json.Unmarshal(byteValue, &config)
 	fmt.Printf("%v\n", config)
 	return nil
